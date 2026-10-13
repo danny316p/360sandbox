@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#202124" />
+    <title>Street View — Preview</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="street-view-app">
+      <section class="panorama" aria-label="360 degree panorama viewer">
+        <div class="skyline" aria-hidden="true"></div>
+        <div class="terrain" aria-hidden="true"></div>
+        <div class="road" aria-hidden="true"></div>
+        <div class="road-marking" aria-hidden="true"></div>
+        <div class="panorama-vignette" aria-hidden="true"></div>
+
+        <header class="top-bar">
+          <button class="icon-button menu-button" aria-label="Open menu" id="menuButton">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="location-search">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input type="search" value="Golden Gate Bridge, San Francisco" aria-label="Search this map" />
+            <button class="clear-search" aria-label="Clear search">×</button>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" aria-label="Share location">↗</button>
+            <button class="avatar" aria-label="Account">A</button>
+          </div>
+        </header>
+
+        <div class="scene-label">
+          <div class="scene-kicker"><span class="live-dot"></span> Street View preview</div>
+          <h1 id="sceneTitle">Golden Gate Bridge</h1>
+          <p>San Francisco, California</p>
+          <a class="flickr-link" id="flickrLink" href="#" target="_blank" rel="noopener noreferrer">Open photo on Flickr ↗</a>
+        </div>
+
+        <div class="viewer-controls">
+          <button class="control-button" id="zoomIn" aria-label="Zoom in">+</button>
+          <button class="control-button" id="zoomOut" aria-label="Zoom out">−</button>
+          <button class="control-button compass" id="resetView" aria-label="Reset compass view">N</button>
+          <button class="control-button fullscreen" id="fullscreenButton" aria-label="Enter fullscreen">⛶</button>
+        </div>
+
+        <div class="map-card" id="mapCard">
+          <div class="map-grid" aria-hidden="true"></div>
+          <div class="map-road road-one"></div>
+          <div class="map-road road-two"></div>
+          <div class="map-road road-three"></div>
+          <div class="map-water"></div>
+          <div class="map-pin" aria-label="Current location"><span></span></div>
+          <div class="map-direction">N</div>
+          <button class="map-expand" id="mapExpand" aria-label="Expand map">⤢</button>
+        </div>
+
+        <button class="map-toggle" id="mapToggle"><span class="map-toggle-icon">⌗</span> Map</button>
+
+        <div class="bottom-panel">
+          <button class="collapse-button" id="collapsePanel" aria-label="Collapse photo panel">⌄</button>
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Explore this place</span>
+              <h2>Nearby 360° photos</h2>
+            </div>
+            <span class="photo-count" id="photoCount">Loading photos…</span>
+          </div>
+          <div class="thumbnail-row" id="thumbnailRow">
+            <p class="photo-status" id="photoStatus">Connecting to Flickr…</p>
+            <button class="add-photo" aria-label="Add a panorama"><span>＋</span><small>Add your photo</small></button>
+          </div>
+        </div>
+
+        <div class="side-menu" id="sideMenu" aria-hidden="true">
+          <button class="menu-close" id="menuClose" aria-label="Close menu">×</button>
+          <span class="eyebrow">Street View</span>
+          <h2>Explore everywhere.</h2>
+          <p>Drop in your own map tiles and equirectangular panoramas to make this view yours.</p>
+          <a href="#photos">Your contributions <span>›</span></a>
+          <a href="#settings">Settings <span>›</span></a>
+        </div>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
