@@ -6,6 +6,7 @@ const thumbnailRow = document.querySelector("#thumbnailRow");
 const photoStatus = document.querySelector("#photoStatus");
 const photoCount = document.querySelector("#photoCount");
 const searchInput = document.querySelector(".location-search input");
+let userPhotos = [];
 
 document.querySelector("#collapsePanel").addEventListener("click", (event) => {
   panel.classList.toggle("collapsed");
@@ -62,9 +63,10 @@ function selectPhoto(photo, thumbnail) {
 
 function renderPhotos(data) {
   thumbnailRow.querySelectorAll(".thumbnail").forEach((thumbnail) => thumbnail.remove());
-  photoCount.textContent = `${data.count} photo${data.count === 1 ? "" : "s"}`;
-  photoStatus.hidden = data.count > 0;
-  data.photos.forEach((photo, index) => {
+  photoCount.textContent = `${data.length} photo${data.length === 1 ? "" : "s"}`;
+  photoStatus.hidden = data.length > 0;
+  if (data.length === 0) photoStatus.textContent = "No photos match this filter.";
+  data.forEach((photo, index) => {
     const thumbnail = document.createElement("button");
     thumbnail.className = `thumbnail${index === 0 ? " active" : ""}`;
     thumbnail.type = "button";
@@ -84,26 +86,33 @@ function renderPhotos(data) {
   });
 }
 
-async function loadPhotos(text) {
+async function loadPhotos() {
   photoStatus.hidden = false;
-  photoStatus.textContent = "Loading Flickr panoramas…";
+  photoStatus.textContent = "Loading photos from Flickr…";
   try {
-    const response = await fetch(`/api/photos?${new URLSearchParams({ text, tags: "360,equirectangular" })}`);
+    const response = await fetch("/api/photos");
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "The photo service returned an error.");
-    renderPhotos(data);
+    userPhotos = data.photos;
+    filterPhotos();
   } catch (error) {
     photoCount.textContent = "Unavailable";
     photoStatus.textContent = error.message;
   }
 }
 
-searchInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") loadPhotos(searchInput.value.trim() || "golden gate bridge");
-});
+function filterPhotos() {
+  const filter = searchInput.value.trim().toLocaleLowerCase();
+  renderPhotos(userPhotos.filter((photo) =>
+    `${photo.title} ${photo.ownerName}`.toLocaleLowerCase().includes(filter)
+  ));
+}
+
+searchInput.addEventListener("input", filterPhotos);
 document.querySelector(".clear-search").addEventListener("click", () => {
   searchInput.value = "";
+  filterPhotos();
   searchInput.focus();
 });
 document.querySelector("#flickrLink").hidden = true;
-loadPhotos(searchInput.value);
+loadPhotos();

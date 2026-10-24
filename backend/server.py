@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
 """Small Flickr proxy and static-file server for the copilot1 Street View UI.
 
-Set FLICKR_API_KEY before starting:
-    FLICKR_API_KEY=... python backend/server.py
+Set up secrets/config.js from secrets/config.example.js before starting:
+    python3 backend/server.py
 
 The key stays on the server; the browser only receives normalized photo data.
 """
@@ -13,11 +14,12 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import urlopen
 import json
 import os
+import re
 
 
 ROOT = Path(__file__).resolve().parent.parent
 FLICKR_ENDPOINT = "https://www.flickr.com/services/rest/"
-DEFAULT_QUERY = "golden gate bridge"
+FLICKR_CONFIG = ROOT / "secrets" / "config.js"
 
 
 class StreetViewHandler(SimpleHTTPRequestHandler):
@@ -34,33 +36,29 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def send_photos(self, query):
-        api_key = os.environ.get("FLICKR_API_KEY")
-        if not api_key:
-            self.send_json(500, {"error": "FLICKR_API_KEY is not configured on the server."})
+        try:
+            api_key, user_id = load_flickr_config()
+        except (OSError, ValueError) as error:
+            self.send_json(500, {"error": str(error)})
             return
 
-        text = query.get("text", [DEFAULT_QUERY])[0].strip() or DEFAULT_QUERY
-        tags = query.get("tags", ["360,equirectangular"])[0]
         try:
-            per_page = min(max(int(query.get("per_page", ["12"])[0]), 1), 30)
+            per_page = min(max(int(query.get("per_page", ["30"])[0]), 1), 500)
+            page = max(int(query.get("page", ["1"])[0]), 1)
         except ValueError:
-            self.send_json(400, {"error": "per_page must be a number between 1 and 30."})
+            self.send_json(400, {"error": "page and per_page must be positive numbers."})
             return
 
         params = {
-            "method": "flickr.photos.search",
+            "method": "flickr.people.getPhotos",
             "api_key": api_key,
-            "text": text,
-            "tags": tags,
-            "tagmode": "all",
-            "content_type": "1",
-            "media": "photos",
+            "user_id": user_id,
             "safe_search": "1",
-            "sort": "relevance",
             "per_page": per_page,
+            "page": page,
             "format": "json",
             "nojsoncallback": "1",
-            "extras": "url_m,url_o,original_format,owner_name,date_upload",
+            "extras": "url_m,url_o,original_format,owner_name,date_upload,tags",
         }
         try:
             with urlopen(f"{FLICKR_ENDPOINT}?{urlencode(params)}", timeout=12) as response:
@@ -92,7 +90,15 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
                 "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
                 "dateUpload": photo.get("dateupload"),
             })
-        self.send_json(200, {"query": text, "count": len(photos), "photos": photos})
+        result = payload.get("photos", {})
+        self.send_json(200, {
+            "userId": user_id,
+            "page": result.get("page", page),
+            "pages": result.get("pages", 1),
+            "total": result.get("total", len(photos)),
+            "count": len(photos),
+            "photos": photos,
+        })
 
     def send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -105,6 +111,26 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         print(f"[street-view] {format % args}")
+
+
+def load_flickr_config():
+    try:
+        config = FLICKR_CONFIG.read_text(encoding="utf-8")
+    except FileNotFoundError as error:
+        raise ValueError(
+            "Flickr config is missing. Copy secrets/config.example.js to secrets/config.js "
+            "and set its API_KEY and USER_ID."
+        ) from error
+
+    values = {}
+    for name in ("API_KEY", "USER_ID"):
+        match = re.search(rf"""\b{name}\s*:\s*(["'])([^"']+)\1""", config)
+        if not match:
+            raise ValueError(f"Flickr {name} is missing from secrets/config.js.")
+        values[name] = match.group(2).strip()
+        if not values[name] or values[name] == f"YOUR_{name}":
+            raise ValueError(f"Set a valid Flickr {name} in secrets/config.js.")
+    return values["API_KEY"], values["USER_ID"]
 
 
 if __name__ == "__main__":
