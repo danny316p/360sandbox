@@ -84,7 +84,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         result = payload.get(result_key, {})
         photos = []
         for photo in result.get("photo", []):
-            dimensions = parse_original_dimensions(photo.get("o_dims"))
+            dimensions = photo_dimensions(photo)
             if not is_equirectangular(dimensions):
                 continue
 
@@ -141,6 +141,29 @@ def parse_original_dimensions(value):
     if not match:
         return None
     return int(match.group(1)), int(match.group(2))
+
+
+def photo_dimensions(photo):
+    dimensions = parse_original_dimensions(photo.get("o_dims"))
+    if dimensions:
+        return dimensions
+
+    for width_key, height_key in (
+        ("width_o", "height_o"),
+        ("o_width", "o_height"),
+        ("width_k", "height_k"),
+        ("width_h", "height_h"),
+        ("width_l", "height_l"),
+        ("width_m", "height_m"),
+    ):
+        try:
+            width = int(photo[width_key])
+            height = int(photo[height_key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if width > 0 and height > 0:
+            return width, height
+    return None
 
 
 def is_equirectangular(dimensions):
