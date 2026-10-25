@@ -18,20 +18,12 @@ button { cursor: pointer; }
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(180deg, #9dd7e5 0%, #cde5db 48%, #b7bd9b 49%, #5c765c 100%);
+  background: #202a2b;
 }
-.skyline {
-  position: absolute; inset: 22% 0 34%; opacity: .55;
-  background: linear-gradient(170deg, transparent 0 13%, #6e817b 13.2% 19%, transparent 19.2% 25%, #657970 25.2% 35%, transparent 35.2% 47%, #78887c 47.2% 57%, transparent 57.2%),
-    linear-gradient(90deg, transparent 0 13%, #71857d 13.2% 19%, transparent 19.2% 30%, #657870 30.2% 37%, transparent 37.2% 44%, #76857b 44.2% 50%, transparent 50.2% 66%, #6f8075 66.2% 73%, transparent 73.2%);
-  filter: blur(1px);
-}
-.terrain { position: absolute; inset: 43% 0 0; background: linear-gradient(166deg, transparent 0 16%, #78977e 16.2% 33%, transparent 33.2% 40%, #688a73 40.2% 61%, transparent 61.2%), linear-gradient(194deg, transparent 0 30%, #4f6d59 30.2% 54%, transparent 54.2%); }
-.road { position: absolute; width: 120%; height: 44%; left: -10%; bottom: -15%; background: linear-gradient(90deg, #30383b, #626c6b 48%, #273135); clip-path: polygon(20% 0, 77% 0, 100% 100%, 0 100%); transform: rotate(-3deg); box-shadow: 0 -18px 30px rgba(31, 47, 46, .26); }
-.road-marking { position: absolute; width: 3px; height: 33%; left: 53%; bottom: -4%; background: repeating-linear-gradient(#d4c984 0 42px, transparent 42px 78px); transform: rotate(-4deg); opacity: .7; }
-.panorama-vignette { position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(3, 13, 15, .28), transparent 30%, transparent 70%, rgba(3, 13, 15, .2)), linear-gradient(0deg, rgba(5, 10, 12, .3), transparent 35%); pointer-events: none; }
-.panorama.has-photo { background-position: center; background-size: cover; }
-.panorama.has-photo .skyline, .panorama.has-photo .terrain, .panorama.has-photo .road, .panorama.has-photo .road-marking { display: none; }
+.panorama-viewer { position: absolute; z-index: 0; inset: 0; }
+.panorama-viewer .pnlm-container { width: 100%; height: 100%; background: #202a2b; }
+.viewer-status { position: absolute; z-index: 2; top: 50%; left: 50%; max-width: min(90vw, 420px); padding: 12px 16px; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; color: #fff; background: rgba(20,26,28,.82); font-size: 13px; text-align: center; transform: translate(-50%, -50%); pointer-events: none; }
+.viewer-status[hidden] { display: none; }
 
 .top-bar { position: absolute; z-index: 3; top: 24px; left: 28px; right: 28px; display: flex; align-items: center; gap: 14px; }
 .icon-button, .avatar { width: 44px; height: 44px; border: 0; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: rgba(26, 33, 36, .83); box-shadow: 0 4px 20px rgba(0,0,0,.18); }

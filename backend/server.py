@@ -56,7 +56,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             "page": page,
             "format": "json",
             "nojsoncallback": "1",
-            "extras": "url_m,url_o,original_format,owner_name,date_upload,tags",
+            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,original_format,owner_name,date_upload,tags",
         }
         if photoset_id:
             params["photoset_id"] = photoset_id
@@ -82,8 +82,14 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         result = payload.get(result_key, {})
         photos = []
         for photo in result.get("photo", []):
-            image_url = photo.get("url_o") or photo.get("url_m")
-            if not image_url:
+            panorama_url = (
+                photo.get("url_k")
+                or photo.get("url_h")
+                or photo.get("url_l")
+                or photo.get("url_o")
+                or photo.get("url_m")
+            )
+            if not panorama_url:
                 continue
             photo_id = photo["id"]
             owner = photo.get("owner") or result.get("owner") or user_id
@@ -91,8 +97,8 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
                 "id": photo_id,
                 "title": photo.get("title") or "Untitled panorama",
                 "ownerName": photo.get("ownername") or owner,
-                "imageUrl": image_url,
-                "thumbnailUrl": photo.get("url_m") or image_url,
+                "panoramaUrl": panorama_url,
+                "thumbnailUrl": photo.get("url_t") or photo.get("url_m") or panorama_url,
                 "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
                 "dateUpload": photo.get("dateupload"),
             })

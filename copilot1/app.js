@@ -5,8 +5,10 @@ const panorama = document.querySelector(".panorama");
 const thumbnailRow = document.querySelector("#thumbnailRow");
 const photoStatus = document.querySelector("#photoStatus");
 const photoCount = document.querySelector("#photoCount");
+const viewerStatus = document.querySelector("#viewerStatus");
 const searchInput = document.querySelector(".location-search input");
 let userPhotos = [];
+let viewer = null;
 
 document.querySelector("#collapsePanel").addEventListener("click", (event) => {
   panel.classList.toggle("collapsed");
@@ -32,11 +34,16 @@ document.querySelector("#menuClose").addEventListener("click", () => {
   menu.setAttribute("aria-hidden", "true");
 });
 
+document.querySelector("#zoomIn").addEventListener("click", () => {
+  if (viewer) viewer.setHfov(viewer.getHfov() - 10);
+});
+
+document.querySelector("#zoomOut").addEventListener("click", () => {
+  if (viewer) viewer.setHfov(viewer.getHfov() + 10);
+});
+
 document.querySelector("#resetView").addEventListener("click", () => {
-  panorama.animate(
-    [{ filter: "hue-rotate(0deg)" }, { filter: "hue-rotate(14deg)" }, { filter: "hue-rotate(0deg)" }],
-    { duration: 450 }
-  );
+  if (viewer) viewer.lookAt(0, 0, 100, 600);
 });
 
 document.querySelector("#fullscreenButton").addEventListener("click", () => {
@@ -55,10 +62,64 @@ function selectPhoto(photo, thumbnail) {
   const flickrLink = document.querySelector("#flickrLink");
   flickrLink.href = photo.pageUrl;
   flickrLink.hidden = false;
-  panorama.classList.add("has-photo");
-  panorama.style.backgroundImage = `linear-gradient(90deg, rgba(3,13,15,.28), transparent 55%), url("${photo.imageUrl}")`;
-  panorama.style.backgroundPosition = "center";
-  panorama.style.backgroundSize = "cover";
+  if (viewer && viewer.getScene() !== photo.sceneId) {
+    viewerStatus.textContent = "Loading panorama…";
+    viewerStatus.hidden = false;
+    viewer.loadScene(photo.sceneId, 0, 0, 100);
+  }
+}
+
+function initializeViewer(photos) {
+  if (photos.length === 0) {
+    viewerStatus.textContent = "No photos are available in the configured Flickr album.";
+    viewerStatus.hidden = false;
+    return;
+  }
+  if (viewer) return;
+  if (!window.pannellum) {
+    viewerStatus.textContent = "The 360° viewer could not be loaded. Check your connection and reload.";
+    viewerStatus.hidden = false;
+    return;
+  }
+
+  const scenes = {};
+  photos.forEach((photo, index) => {
+    photo.sceneId = `photo-${photo.id}`;
+    scenes[photo.sceneId] = {
+      type: "equirectangular",
+      panorama: photo.panoramaUrl,
+      title: photo.title,
+      author: photo.ownerName,
+      hfov: 100,
+      pitch: 0,
+      yaw: 0
+    };
+  });
+
+  viewer = window.pannellum.viewer("panoramaViewer", {
+    default: { firstScene: photos[0].sceneId },
+    scenes,
+    autoLoad: true,
+    showControls: false,
+    showFullscreenCtrl: false,
+    showZoomCtrl: false,
+    mouseZoom: true,
+    keyboardZoom: true,
+    draggable: true,
+    friction: 0.15,
+    hfov: 100,
+    minHfov: 35,
+    maxHfov: 120,
+    crossOrigin: "anonymous",
+    escapeHTML: true
+  });
+  viewer.on("load", () => {
+    viewerStatus.hidden = true;
+  });
+  viewer.on("error", (error) => {
+    viewerStatus.textContent = `Could not load this panorama: ${error}`;
+    viewerStatus.hidden = false;
+  });
 }
 
 function renderPhotos(data) {
@@ -82,7 +143,9 @@ function renderPhotos(data) {
     thumbnail.append(image, title, attribution);
     thumbnail.addEventListener("click", () => selectPhoto(photo, thumbnail));
     thumbnailRow.insertBefore(thumbnail, thumbnailRow.querySelector(".add-photo"));
-    if (index === 0) selectPhoto(photo, thumbnail);
+    if (index === 0) {
+      selectPhoto(photo, thumbnail);
+    }
   });
 }
 
@@ -94,10 +157,13 @@ async function loadPhotos() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "The photo service returned an error.");
     userPhotos = data.photos;
+    initializeViewer(userPhotos);
     filterPhotos();
   } catch (error) {
     photoCount.textContent = "Unavailable";
     photoStatus.textContent = error.message;
+    viewerStatus.textContent = `Could not load Flickr photos: ${error.message}`;
+    viewerStatus.hidden = false;
   }
 }
 

@@ -18,4 +18,4 @@ The backend serves `copilot1` and loads public photos from the configured Flickr
 
 4. Open <http://localhost:8000>.
 
-When `PHOTOSET_ID` is set, the backend loads photos from that album using Flickr's `flickr.photosets.getPhotos` endpoint. Otherwise it loads the configured user's photos using `flickr.people.getPhotos`. The search field filters the loaded photos by title or photographer locally. Each result includes `imageUrl`, `thumbnailUrl`, and `pageUrl`; `pageUrl` opens the Flickr page where visitors can comment or favorite the photo.
+When `PHOTOSET_ID` is set, the backend loads photos from that album using Flickr's `flickr.photosets.getPhotos` endpoint. Otherwise it loads the configured user's photos using `flickr.people.getPhotos`. It returns small Flickr thumbnails for the photo strip and a panorama image capped at Flickr's 2048-pixel size when available. The interface renders panoramas with Pannellum, supporting mouse/touch drag, scroll-wheel zoom, and the on-screen zoom and reset controls. The search field filters loaded photos by title or photographer locally. Each result links to its Flickr page for comments and favorites.
