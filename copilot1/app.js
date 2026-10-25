@@ -71,7 +71,7 @@ function selectPhoto(photo, thumbnail) {
 
 function initializeViewer(photos) {
   if (photos.length === 0) {
-    viewerStatus.textContent = "No photos are available in the configured Flickr album.";
+    viewerStatus.textContent = "No 2:1 equirectangular panoramas were found in the configured Flickr source.";
     viewerStatus.hidden = false;
     return;
   }
@@ -126,7 +126,11 @@ function renderPhotos(data) {
   thumbnailRow.querySelectorAll(".thumbnail").forEach((thumbnail) => thumbnail.remove());
   photoCount.textContent = `${data.length} photo${data.length === 1 ? "" : "s"}`;
   photoStatus.hidden = data.length > 0;
-  if (data.length === 0) photoStatus.textContent = "No photos match this filter.";
+  if (data.length === 0) {
+    photoStatus.textContent = userPhotos.length === 0
+      ? "No suitable 360° panoramas found."
+      : "No photos match this filter.";
+  }
   data.forEach((photo, index) => {
     const thumbnail = document.createElement("button");
     thumbnail.className = `thumbnail${index === 0 ? " active" : ""}`;

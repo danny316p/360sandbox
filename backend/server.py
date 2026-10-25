@@ -20,6 +20,8 @@ import re
 ROOT = Path(__file__).resolve().parent.parent
 FLICKR_ENDPOINT = "https://www.flickr.com/services/rest/"
 FLICKR_CONFIG = ROOT / "secrets" / "config.js"
+PANORAMA_ASPECT_RATIO = 2
+PANORAMA_ASPECT_TOLERANCE = 0.01
 
 
 class StreetViewHandler(SimpleHTTPRequestHandler):
@@ -56,7 +58,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             "page": page,
             "format": "json",
             "nojsoncallback": "1",
-            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,original_format,owner_name,date_upload,tags",
+            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,o_dims,original_format,owner_name,date_upload,tags",
         }
         if photoset_id:
             params["photoset_id"] = photoset_id
@@ -82,6 +84,10 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         result = payload.get(result_key, {})
         photos = []
         for photo in result.get("photo", []):
+            dimensions = parse_original_dimensions(photo.get("o_dims"))
+            if not is_equirectangular(dimensions):
+                continue
+
             panorama_url = (
                 photo.get("url_k")
                 or photo.get("url_h")
@@ -99,6 +105,8 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
                 "ownerName": photo.get("ownername") or owner,
                 "panoramaUrl": panorama_url,
                 "thumbnailUrl": photo.get("url_t") or photo.get("url_m") or panorama_url,
+                "width": dimensions[0],
+                "height": dimensions[1],
                 "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
                 "dateUpload": photo.get("dateupload"),
             })
@@ -107,7 +115,8 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             "photosetId": photoset_id,
             "page": result.get("page", page),
             "pages": result.get("pages", 1),
-            "total": result.get("total", len(photos)),
+            "total": len(photos),
+            "sourceTotal": result.get("total", len(photos)),
             "count": len(photos),
             "photos": photos,
         })
@@ -123,6 +132,27 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         print(f"[street-view] {format % args}")
+
+
+def parse_original_dimensions(value):
+    if not isinstance(value, str):
+        return None
+    match = re.fullmatch(r"\s*(\d+)\s*[x,]\s*(\d+)\s*", value)
+    if not match:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def is_equirectangular(dimensions):
+    if not dimensions:
+        return False
+    width, height = dimensions
+    if width <= 0 or height <= 0:
+        return False
+    aspect_ratio = width / height
+    return abs(aspect_ratio - PANORAMA_ASPECT_RATIO) <= (
+        PANORAMA_ASPECT_RATIO * PANORAMA_ASPECT_TOLERANCE
+    )
 
 
 def load_flickr_config():
