@@ -5,16 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#202124" />
     <title>Street View — Preview</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="street-view-app">
       <section class="panorama" aria-label="360 degree panorama viewer">
-        <div class="skyline" aria-hidden="true"></div>
-        <div class="terrain" aria-hidden="true"></div>
-        <div class="road" aria-hidden="true"></div>
-        <div class="road-marking" aria-hidden="true"></div>
-        <div class="panorama-vignette" aria-hidden="true"></div>
+        <div id="panoramaViewer" class="panorama-viewer" aria-label="Interactive 360 degree photo"></div>
+        <div id="viewerStatus" class="viewer-status" role="status">Loading 360° viewer…</div>
 
         <header class="top-bar">
           <button class="icon-button menu-button" aria-label="Open menu" id="menuButton">
@@ -41,7 +39,7 @@
         <div class="viewer-controls">
           <button class="control-button" id="zoomIn" aria-label="Zoom in">+</button>
           <button class="control-button" id="zoomOut" aria-label="Zoom out">−</button>
-          <button class="control-button compass" id="resetView" aria-label="Reset compass view">N</button>
+          <button class="control-button compass" id="resetView" aria-label="Reset panorama view">↻</button>
           <button class="control-button fullscreen" id="fullscreenButton" aria-label="Enter fullscreen">⛶</button>
         </div>
 
@@ -77,12 +75,13 @@
           <button class="menu-close" id="menuClose" aria-label="Close menu">×</button>
           <span class="eyebrow">Street View</span>
           <h2>Explore everywhere.</h2>
-          <p>Drop in your own map tiles and equirectangular panoramas to make this view yours.</p>
+          <p>Drag to look around each 360° photo. Scroll or use the zoom controls to take a closer look.</p>
           <a href="#photos">Your contributions <span>›</span></a>
           <a href="#settings">Settings <span>›</span></a>
         </div>
       </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
