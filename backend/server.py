@@ -37,7 +37,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
 
     def send_photos(self, query):
         try:
-            api_key, user_id = load_flickr_config()
+            api_key, user_id, photoset_id = load_flickr_config()
         except (OSError, ValueError) as error:
             self.send_json(500, {"error": str(error)})
             return
@@ -50,16 +50,20 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             return
 
         params = {
-            "method": "flickr.people.getPhotos",
+            "method": "flickr.photosets.getPhotos" if photoset_id else "flickr.people.getPhotos",
             "api_key": api_key,
-            "user_id": user_id,
-            "safe_search": "1",
             "per_page": per_page,
             "page": page,
             "format": "json",
             "nojsoncallback": "1",
             "extras": "url_m,url_o,original_format,owner_name,date_upload,tags",
         }
+        if photoset_id:
+            params["photoset_id"] = photoset_id
+            params["user_id"] = user_id
+        else:
+            params["user_id"] = user_id
+            params["safe_search"] = "1"
         try:
             with urlopen(f"{FLICKR_ENDPOINT}?{urlencode(params)}", timeout=12) as response:
                 payload = json.load(response)
@@ -74,13 +78,15 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             self.send_json(502, {"error": payload.get("message", "Flickr rejected the request.")})
             return
 
+        result_key = "photoset" if photoset_id else "photos"
+        result = payload.get(result_key, {})
         photos = []
-        for photo in payload.get("photos", {}).get("photo", []):
+        for photo in result.get("photo", []):
             image_url = photo.get("url_o") or photo.get("url_m")
             if not image_url:
                 continue
             photo_id = photo["id"]
-            owner = photo["owner"]
+            owner = photo.get("owner") or result.get("owner") or user_id
             photos.append({
                 "id": photo_id,
                 "title": photo.get("title") or "Untitled panorama",
@@ -90,9 +96,9 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
                 "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
                 "dateUpload": photo.get("dateupload"),
             })
-        result = payload.get("photos", {})
         self.send_json(200, {
             "userId": user_id,
+            "photosetId": photoset_id,
             "page": result.get("page", page),
             "pages": result.get("pages", 1),
             "total": result.get("total", len(photos)),
@@ -130,7 +136,12 @@ def load_flickr_config():
         values[name] = match.group(2).strip()
         if not values[name] or values[name] == f"YOUR_{name}":
             raise ValueError(f"Set a valid Flickr {name} in secrets/config.js.")
-    return values["API_KEY"], values["USER_ID"]
+
+    photoset_match = re.search(r"""\bPHOTOSET_ID\s*:\s*(["'])([^"']*)\1""", config)
+    photoset_id = photoset_match.group(2).strip() if photoset_match else ""
+    if photoset_id == "YOUR_PHOTOSET_ID":
+        photoset_id = ""
+    return values["API_KEY"], values["USER_ID"], photoset_id
 
 
 if __name__ == "__main__":
