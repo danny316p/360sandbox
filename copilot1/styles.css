@@ -39,6 +39,7 @@ button { cursor: pointer; }
 .top-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
 .top-actions .icon-button { font-size: 20px; }
 .avatar { background: #de8f67; font-weight: 700; text-decoration: none; }
+.avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .avatar[hidden], .side-menu [hidden] { display: none; }
 
 .scene-label { position: absolute; z-index: 2; left: 34px; top: 27%; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
