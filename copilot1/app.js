@@ -232,7 +232,7 @@ function renderPhotos(data) {
       thumbnail.append(badge);
     }
     thumbnail.addEventListener("click", () => selectPhoto(photo, thumbnail));
-    thumbnailRow.insertBefore(thumbnail, thumbnailRow.querySelector(".add-photo"));
+    thumbnailRow.append(thumbnail);
     if (index === 0) {
       selectPhoto(photo, thumbnail);
     }
