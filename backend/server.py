@@ -45,7 +45,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             return
 
         try:
-            per_page = min(max(int(query.get("per_page", ["30"])[0]), 1), 500)
+            per_page = min(max(int(query.get("per_page", ["500"])[0]), 1), 500)
             page = max(int(query.get("page", ["1"])[0]), 1)
         except ValueError:
             self.send_json(400, {"error": "page and per_page must be positive numbers."})

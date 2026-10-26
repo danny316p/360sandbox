@@ -220,17 +220,22 @@ async function loadPhotos() {
   photoStatus.hidden = false;
   photoStatus.textContent = "Loading photos from Flickr…";
   try {
-    const response = await fetch("/api/photos");
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "The photo service returned an error.");
-    userPhotos = data.photos;
+    const perPage = 500;
+    const firstPage = await fetchPhotoPage(1, perPage);
+    const allPhotos = firstPage.photos;
+    for (let page = 2; page <= firstPage.pages; page += 1) {
+      photoStatus.textContent = `Loading Flickr album (${page} of ${firstPage.pages})…`;
+      const nextPage = await fetchPhotoPage(page, perPage);
+      allPhotos.push(...nextPage.photos);
+    }
+    userPhotos = allPhotos;
     initializeViewer(userPhotos);
-    if (data.profileUrl) {
+    if (firstPage.profileUrl) {
       const accountLink = document.querySelector("#accountLink");
-      accountLink.href = data.profileUrl;
+      accountLink.href = firstPage.profileUrl;
       accountLink.hidden = false;
       const profileMenuLink = document.querySelector("#profileMenuLink");
-      profileMenuLink.href = data.profileUrl;
+      profileMenuLink.href = firstPage.profileUrl;
       profileMenuLink.hidden = false;
     }
     filterPhotos();
@@ -240,6 +245,17 @@ async function loadPhotos() {
     viewerStatus.textContent = `Could not load Flickr photos: ${error.message}`;
     viewerStatus.hidden = false;
   }
+}
+
+async function fetchPhotoPage(page, perPage) {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  const response = await fetch(`/api/photos?${params}`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "The photo service returned an error.");
+  if (!Array.isArray(data.photos) || !Number.isInteger(data.pages)) {
+    throw new Error("The photo service returned an invalid album page.");
+  }
+  return data;
 }
 
 function filterPhotos() {
