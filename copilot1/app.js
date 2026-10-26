@@ -256,6 +256,16 @@ async function loadPhotos() {
     if (firstPage.profileUrl) {
       const accountLink = document.querySelector("#accountLink");
       accountLink.href = firstPage.profileUrl;
+      if (firstPage.avatarUrl) {
+        const avatar = document.createElement("img");
+        avatar.src = firstPage.avatarUrl;
+        avatar.alt = "";
+        avatar.addEventListener("error", () => {
+          avatar.remove();
+          accountLink.textContent = "F";
+        }, { once: true });
+        accountLink.replaceChildren(avatar);
+      }
       accountLink.hidden = false;
       const profileMenuLink = document.querySelector("#profileMenuLink");
       profileMenuLink.href = firstPage.profileUrl;

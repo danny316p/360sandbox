@@ -59,7 +59,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             "media": "all",
             "format": "json",
             "nojsoncallback": "1",
-            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,o_dims,original_format,owner_name,date_upload,tags,media",
+            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,o_dims,original_format,owner_name,icon_server,date_upload,tags,media",
         }
         if photoset_id:
             params["photoset_id"] = photoset_id
@@ -83,6 +83,10 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
 
         result_key = "photoset" if photoset_id else "photos"
         result = payload.get(result_key, {})
+        profile = next(
+            (photo for photo in result.get("photo", []) if photo.get("owner") == user_id),
+            {},
+        )
         photos = []
         for photo in result.get("photo", []):
             photo_id = photo["id"]
@@ -128,6 +132,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         self.send_json(200, {
             "userId": user_id,
             "profileUrl": f"https://www.flickr.com/people/{user_id}/",
+            "avatarUrl": flickr_avatar_url(profile),
             "photosetId": photoset_id,
             "page": result.get("page", page),
             "pages": result.get("pages", 1),
@@ -192,6 +197,19 @@ def is_equirectangular(dimensions):
     return abs(aspect_ratio - PANORAMA_ASPECT_RATIO) <= (
         PANORAMA_ASPECT_RATIO * PANORAMA_ASPECT_TOLERANCE
     )
+
+
+def flickr_avatar_url(profile):
+    icon_server = str(profile.get("iconserver", "0"))
+    if icon_server == "0":
+        return "https://www.flickr.com/images/buddyicon.gif"
+    icon_farm = profile.get("iconfarm")
+    if not icon_farm:
+        return "https://www.flickr.com/images/buddyicon.gif"
+    user_id = profile.get("owner")
+    if not user_id:
+        return "https://www.flickr.com/images/buddyicon.gif"
+    return f"https://farm{icon_farm}.staticflickr.com/{icon_server}/buddyicons/{user_id}.jpg"
 
 
 def load_flickr_config():
