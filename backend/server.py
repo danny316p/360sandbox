@@ -112,6 +112,7 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             })
         self.send_json(200, {
             "userId": user_id,
+            "profileUrl": f"https://www.flickr.com/people/{user_id}/",
             "photosetId": photoset_id,
             "page": result.get("page", page),
             "pages": result.get("pages", 1),

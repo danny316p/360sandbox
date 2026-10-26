@@ -9,29 +9,88 @@ const viewerStatus = document.querySelector("#viewerStatus");
 const searchInput = document.querySelector(".location-search input");
 let userPhotos = [];
 let viewer = null;
+let currentPhoto = null;
+let autoRotate = false;
+let noticeTimeout;
 
 document.querySelector("#collapsePanel").addEventListener("click", (event) => {
   panel.classList.toggle("collapsed");
   event.currentTarget.textContent = panel.classList.contains("collapsed") ? "⌃" : "⌄";
+  event.currentTarget.setAttribute("aria-label", panel.classList.contains("collapsed") ? "Expand photo panel" : "Collapse photo panel");
 });
 
 document.querySelector("#mapExpand").addEventListener("click", () => {
-  mapCard.classList.toggle("expanded");
+  setMapExpanded(!mapCard.classList.contains("expanded"));
 });
 
 document.querySelector("#mapToggle").addEventListener("click", () => {
-  mapCard.classList.toggle("expanded");
-  mapCard.scrollIntoView({ behavior: "smooth", block: "center" });
+  setMapExpanded(!mapCard.classList.contains("expanded"));
 });
 
+function setMapExpanded(expanded) {
+  mapCard.classList.toggle("expanded", expanded);
+  document.querySelector("#mapToggle").setAttribute("aria-expanded", String(expanded));
+  document.querySelector("#mapExpand").setAttribute("aria-label", expanded ? "Shrink map preview" : "Expand map preview");
+}
+
+function setMenuOpen(open) {
+  menu.classList.toggle("open", open);
+  menu.setAttribute("aria-hidden", String(!open));
+  document.querySelector("#menuBackdrop").hidden = !open;
+  document.querySelector("#menuButton").setAttribute("aria-expanded", String(open));
+}
+
 document.querySelector("#menuButton").addEventListener("click", () => {
-  menu.classList.add("open");
-  menu.setAttribute("aria-hidden", "false");
+  setMenuOpen(true);
+  document.querySelector("#menuClose").focus();
 });
 
 document.querySelector("#menuClose").addEventListener("click", () => {
-  menu.classList.remove("open");
-  menu.setAttribute("aria-hidden", "true");
+  setMenuOpen(false);
+  document.querySelector("#menuButton").focus();
+});
+
+document.querySelector("#menuBackdrop").addEventListener("click", () => setMenuOpen(false));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && menu.classList.contains("open")) {
+    setMenuOpen(false);
+    document.querySelector("#menuButton").focus();
+  }
+});
+
+document.querySelector("#autoRotateButton").addEventListener("click", (event) => {
+  autoRotate = !autoRotate;
+  event.currentTarget.setAttribute("aria-pressed", String(autoRotate));
+  document.querySelector("#autoRotateState").textContent = autoRotate ? "On" : "Off";
+  if (viewer) {
+    if (autoRotate) viewer.startAutoRotate(2, 0);
+    else viewer.stopAutoRotate();
+  }
+});
+
+function showNotice(message) {
+  const notice = document.querySelector("#appNotice");
+  notice.textContent = message;
+  notice.hidden = false;
+  clearTimeout(noticeTimeout);
+  noticeTimeout = setTimeout(() => { notice.hidden = true; }, 3000);
+}
+
+document.querySelector("#shareButton").addEventListener("click", async () => {
+  if (!currentPhoto) {
+    showNotice("Select a photo before sharing.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(currentPhoto.pageUrl);
+    showNotice("Flickr photo link copied.");
+  } catch (error) {
+    if (error.name === "NotAllowedError" || error.name === "SecurityError") {
+      showNotice("Clipboard access was blocked. Open the Flickr photo link to share it.");
+      return;
+    }
+    showNotice("Could not copy the Flickr photo link.");
+  }
 });
 
 document.querySelector("#zoomIn").addEventListener("click", () => {
@@ -66,7 +125,10 @@ function selectPhoto(photo, thumbnail) {
     viewerStatus.textContent = "Loading panorama…";
     viewerStatus.hidden = false;
     viewer.loadScene(photo.sceneId, 0, 0, 100);
+  } else if (viewer && autoRotate) {
+    viewer.startAutoRotate(2, 0);
   }
+  currentPhoto = photo;
 }
 
 function initializeViewer(photos) {
@@ -115,6 +177,7 @@ function initializeViewer(photos) {
   });
   viewer.on("load", () => {
     viewerStatus.hidden = true;
+    if (autoRotate) viewer.startAutoRotate(2, 0);
   });
   viewer.on("error", (error) => {
     viewerStatus.textContent = `Could not load this panorama: ${error}`;
@@ -162,6 +225,14 @@ async function loadPhotos() {
     if (!response.ok) throw new Error(data.error || "The photo service returned an error.");
     userPhotos = data.photos;
     initializeViewer(userPhotos);
+    if (data.profileUrl) {
+      const accountLink = document.querySelector("#accountLink");
+      accountLink.href = data.profileUrl;
+      accountLink.hidden = false;
+      const profileMenuLink = document.querySelector("#profileMenuLink");
+      profileMenuLink.href = data.profileUrl;
+      profileMenuLink.hidden = false;
+    }
     filterPhotos();
   } catch (error) {
     photoCount.textContent = "Unavailable";
