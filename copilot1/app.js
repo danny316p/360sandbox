@@ -25,8 +25,15 @@ document.querySelector("#mapExpand").addEventListener("click", () => {
 });
 
 document.querySelector("#mapToggle").addEventListener("click", () => {
-  setMapExpanded(!mapCard.classList.contains("expanded"));
+  setMapVisible(mapCard.hidden);
 });
+
+function setMapVisible(visible) {
+  mapCard.hidden = !visible;
+  const mapToggle = document.querySelector("#mapToggle");
+  mapToggle.setAttribute("aria-pressed", String(visible));
+  document.querySelector("#mapToggleLabel").textContent = visible ? "Hide map" : "Show map";
+}
 
 function setMapExpanded(expanded) {
   mapCard.classList.toggle("expanded", expanded);
