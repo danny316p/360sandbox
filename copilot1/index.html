@@ -12,6 +12,7 @@
     <main class="street-view-app">
       <section class="panorama" aria-label="360 degree panorama viewer">
         <div id="panoramaViewer" class="panorama-viewer" aria-label="Interactive 360 degree photo"></div>
+        <iframe id="flickrVideoPlayer" class="flickr-video-player" title="Flickr 360 degree video player" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy" hidden></iframe>
         <div id="viewerStatus" class="viewer-status" role="status">Loading 360° viewer…</div>
 
         <header class="top-bar">
@@ -61,7 +62,7 @@
           <div class="panel-heading">
             <div>
               <span class="eyebrow">Explore this place</span>
-              <h2>Nearby 360° photos</h2>
+              <h2>360° photos &amp; videos</h2>
             </div>
             <span class="photo-count" id="photoCount">Loading photos…</span>
           </div>

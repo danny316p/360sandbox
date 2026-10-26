@@ -6,6 +6,7 @@ const thumbnailRow = document.querySelector("#thumbnailRow");
 const photoStatus = document.querySelector("#photoStatus");
 const photoCount = document.querySelector("#photoCount");
 const viewerStatus = document.querySelector("#viewerStatus");
+const flickrVideoPlayer = document.querySelector("#flickrVideoPlayer");
 const searchInput = document.querySelector(".location-search input");
 let userPhotos = [];
 let viewer = null;
@@ -121,6 +122,17 @@ function selectPhoto(photo, thumbnail) {
   const flickrLink = document.querySelector("#flickrLink");
   flickrLink.href = photo.pageUrl;
   flickrLink.hidden = false;
+  currentPhoto = photo;
+  const isVideo = photo.mediaType === "video";
+  panorama.classList.toggle("is-video", isVideo);
+  flickrVideoPlayer.hidden = !isVideo;
+  if (isVideo) {
+    if (viewer) viewer.stopAutoRotate();
+    viewerStatus.hidden = true;
+    flickrVideoPlayer.src = photo.embedUrl;
+    return;
+  }
+  flickrVideoPlayer.removeAttribute("src");
   if (viewer && viewer.getScene() !== photo.sceneId) {
     viewerStatus.textContent = "Loading panorama…";
     viewerStatus.hidden = false;
@@ -128,13 +140,12 @@ function selectPhoto(photo, thumbnail) {
   } else if (viewer && autoRotate) {
     viewer.startAutoRotate(2, 0);
   }
-  currentPhoto = photo;
 }
 
 function initializeViewer(photos) {
-  if (photos.length === 0) {
-    viewerStatus.textContent = "No 2:1 equirectangular panoramas were found in the configured Flickr source.";
-    viewerStatus.hidden = false;
+  const panoramaPhotos = photos.filter((photo) => photo.mediaType !== "video");
+  if (panoramaPhotos.length === 0) {
+    viewerStatus.hidden = true;
     return;
   }
   if (viewer) return;
@@ -145,7 +156,7 @@ function initializeViewer(photos) {
   }
 
   const scenes = {};
-  photos.forEach((photo, index) => {
+  panoramaPhotos.forEach((photo) => {
     photo.sceneId = `photo-${photo.id}`;
     scenes[photo.sceneId] = {
       type: "equirectangular",
@@ -159,7 +170,7 @@ function initializeViewer(photos) {
   });
 
   viewer = window.pannellum.viewer("panoramaViewer", {
-    default: { firstScene: photos[0].sceneId },
+    default: { firstScene: panoramaPhotos[0].sceneId },
     scenes,
     autoLoad: true,
     showControls: false,
@@ -177,7 +188,7 @@ function initializeViewer(photos) {
   });
   viewer.on("load", () => {
     viewerStatus.hidden = true;
-    if (autoRotate) viewer.startAutoRotate(2, 0);
+    if (autoRotate && currentPhoto?.mediaType !== "video") viewer.startAutoRotate(2, 0);
   });
   viewer.on("error", (error) => {
     viewerStatus.textContent = `Could not load this panorama: ${error}`;
@@ -187,27 +198,39 @@ function initializeViewer(photos) {
 
 function renderPhotos(data) {
   thumbnailRow.querySelectorAll(".thumbnail").forEach((thumbnail) => thumbnail.remove());
-  photoCount.textContent = `${data.length} photo${data.length === 1 ? "" : "s"}`;
+  photoCount.textContent = `${data.length} item${data.length === 1 ? "" : "s"}`;
   photoStatus.hidden = data.length > 0;
   if (data.length === 0) {
     photoStatus.textContent = userPhotos.length === 0
-      ? "No suitable 360° panoramas found."
-      : "No photos match this filter.";
+      ? "No suitable 360° photos or videos found."
+      : "No photos or videos match this filter.";
   }
   data.forEach((photo, index) => {
     const thumbnail = document.createElement("button");
     thumbnail.className = `thumbnail${index === 0 ? " active" : ""}`;
     thumbnail.type = "button";
-    thumbnail.setAttribute("aria-label", photo.title);
+    thumbnail.setAttribute("aria-label", `${photo.mediaType === "video" ? "360 degree video" : "360 degree photo"}: ${photo.title}`);
     const image = document.createElement("img");
     image.className = "thumb-art";
-    image.src = photo.thumbnailUrl;
+    if (photo.thumbnailUrl) image.src = photo.thumbnailUrl;
     image.alt = "";
     const title = document.createElement("strong");
     title.textContent = photo.title;
     const attribution = document.createElement("small");
     attribution.textContent = `Flickr · ${photo.ownerName}`;
     thumbnail.append(image, title, attribution);
+    if (photo.mediaType === "video") {
+      const badge = document.createElement("span");
+      badge.className = "media-badge";
+      badge.textContent = "▶ 360° video";
+      thumbnail.append(badge);
+    }
+    if (photo.mediaType === "video") {
+      const badge = document.createElement("span");
+      badge.className = "media-badge";
+      badge.textContent = "▶ 360° video";
+      thumbnail.append(badge);
+    }
     thumbnail.addEventListener("click", () => selectPhoto(photo, thumbnail));
     thumbnailRow.insertBefore(thumbnail, thumbnailRow.querySelector(".add-photo"));
     if (index === 0) {

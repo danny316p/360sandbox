@@ -56,9 +56,10 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             "api_key": api_key,
             "per_page": per_page,
             "page": page,
+            "media": "all",
             "format": "json",
             "nojsoncallback": "1",
-            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,o_dims,original_format,owner_name,date_upload,tags",
+            "extras": "url_t,url_m,url_l,url_h,url_k,url_o,o_dims,original_format,owner_name,date_upload,tags,media",
         }
         if photoset_id:
             params["photoset_id"] = photoset_id
@@ -84,10 +85,25 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         result = payload.get(result_key, {})
         photos = []
         for photo in result.get("photo", []):
+            photo_id = photo["id"]
+            owner = photo.get("owner") or result.get("owner") or user_id
+            media_type = photo.get("media", "photo")
+            if media_type == "video":
+                photos.append({
+                    "id": photo_id,
+                    "mediaType": "video",
+                    "title": photo.get("title") or "Untitled 360° video",
+                    "ownerName": photo.get("ownername") or owner,
+                    "thumbnailUrl": photo.get("url_t") or photo.get("url_m"),
+                    "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
+                    "embedUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}/player/",
+                    "dateUpload": photo.get("dateupload"),
+                })
+                continue
+
             dimensions = photo_dimensions(photo)
             if not is_equirectangular(dimensions):
                 continue
-
             panorama_url = (
                 photo.get("url_k")
                 or photo.get("url_h")
@@ -97,10 +113,9 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
             )
             if not panorama_url:
                 continue
-            photo_id = photo["id"]
-            owner = photo.get("owner") or result.get("owner") or user_id
             photos.append({
                 "id": photo_id,
+                "mediaType": "photo",
                 "title": photo.get("title") or "Untitled panorama",
                 "ownerName": photo.get("ownername") or owner,
                 "panoramaUrl": panorama_url,
