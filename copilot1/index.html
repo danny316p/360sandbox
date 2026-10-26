@@ -12,8 +12,12 @@
     <main class="street-view-app">
       <section class="panorama" aria-label="360 degree panorama viewer">
         <div id="panoramaViewer" class="panorama-viewer" aria-label="Interactive 360 degree photo"></div>
-        <iframe id="flickrVideoPlayer" class="flickr-video-player" title="Flickr 360 degree video player" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy" hidden></iframe>
         <div id="viewerStatus" class="viewer-status" role="status">Loading 360° viewer…</div>
+        <div class="video-controls" id="videoControls" aria-label="360 degree video controls" hidden>
+          <button class="video-play-button" id="videoPlayPause" type="button" aria-label="Play video">▶</button>
+          <input id="videoSeek" type="range" min="0" max="1000" value="0" aria-label="Seek through video" />
+          <span class="video-time" id="videoTime">0:00 / 0:00</span>
+        </div>
 
         <header class="top-bar">
           <button class="icon-button menu-button" aria-label="Open menu" id="menuButton">

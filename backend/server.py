@@ -8,10 +8,11 @@ The key stays on the server; the browser only receives normalized photo data.
 """
 
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlencode, urlparse
-from urllib.request import urlopen
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
+from urllib.request import Request, urlopen
 import json
 import os
 import re
@@ -33,9 +34,25 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/photos":
             self.send_photos(parse_qs(parsed.query))
             return
+        if parsed.path == "/api/video-source":
+            self.send_video_source(parse_qs(parsed.query))
+            return
         if parsed.path == "/":
             self.path = "/index.html"
         super().do_GET()
+
+    def send_video_source(self, query):
+        photo_id = query.get("id", [""])[0]
+        if not re.fullmatch(r"\d{1,20}", photo_id):
+            self.send_json(400, {"error": "A valid Flickr photo ID is required."})
+            return
+
+        try:
+            video_url = resolve_flickr_video_url(photo_id)
+        except (HTTPError, URLError, TimeoutError, ValueError) as error:
+            self.send_json(502, {"error": f"Could not load the Flickr video: {error}"})
+            return
+        self.send_json(200, {"videoUrl": video_url})
 
     def send_photos(self, query):
         try:
@@ -100,7 +117,6 @@ class StreetViewHandler(SimpleHTTPRequestHandler):
                     "ownerName": photo.get("ownername") or owner,
                     "thumbnailUrl": photo.get("url_t") or photo.get("url_m"),
                     "pageUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}",
-                    "embedUrl": f"https://www.flickr.com/photos/{owner}/{photo_id}/player/",
                     "dateUpload": photo.get("dateupload"),
                 })
                 continue
@@ -210,6 +226,48 @@ def flickr_avatar_url(profile):
     if not user_id:
         return "https://www.flickr.com/images/buddyicon.gif"
     return f"https://farm{icon_farm}.staticflickr.com/{icon_server}/buddyicons/{user_id}.jpg"
+
+
+class FlickrVideoSourceParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.video_url = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "video" and self.video_url is None:
+            self.video_url = dict(attrs).get("src")
+
+
+def resolve_flickr_video_url(photo_id):
+    embed_url = f"https://embedr.flickr.com/photos/{photo_id}"
+    with urlopen(embed_url, timeout=12) as response:
+        parser = FlickrVideoSourceParser()
+        parser.feed(response.read().decode("utf-8"))
+
+    if not parser.video_url:
+        raise ValueError("Flickr did not provide a playable video source.")
+
+    player_url = urljoin(embed_url, parser.video_url)
+    parsed_player_url = urlparse(player_url)
+    if (
+        parsed_player_url.scheme != "https"
+        or parsed_player_url.hostname != "www.flickr.com"
+        or "/play/" not in parsed_player_url.path
+    ):
+        raise ValueError("Flickr returned an unsupported video source.")
+
+    request = Request(player_url, method="HEAD")
+    with urlopen(request, timeout=12) as response:
+        stream_url = response.geturl()
+    parsed_stream_url = urlparse(stream_url)
+    if (
+        parsed_stream_url.scheme != "https"
+        or not parsed_stream_url.hostname
+        or not parsed_stream_url.hostname.endswith(".staticflickr.com")
+        or not parsed_stream_url.path.endswith(".mp4")
+    ):
+        raise ValueError("Flickr did not redirect to a supported MP4 stream.")
+    return stream_url
 
 
 def load_flickr_config():

@@ -6,11 +6,20 @@ const thumbnailRow = document.querySelector("#thumbnailRow");
 const photoStatus = document.querySelector("#photoStatus");
 const photoCount = document.querySelector("#photoCount");
 const viewerStatus = document.querySelector("#viewerStatus");
-const flickrVideoPlayer = document.querySelector("#flickrVideoPlayer");
+const videoControls = document.querySelector("#videoControls");
+const videoPlayPause = document.querySelector("#videoPlayPause");
+const videoSeek = document.querySelector("#videoSeek");
+const videoTime = document.querySelector("#videoTime");
 const searchInput = document.querySelector(".location-search input");
 let userPhotos = [];
 let viewer = null;
+let viewerReady = false;
+let pendingScene = null;
 let currentPhoto = null;
+let currentVideo = null;
+let videoSelectionToken = 0;
+const videoScenes = new Map();
+const videoControlListeners = new WeakSet();
 let autoRotate = false;
 let noticeTimeout;
 
@@ -122,6 +131,8 @@ document.querySelector("#fullscreenButton").addEventListener("click", () => {
 });
 
 function selectPhoto(photo, thumbnail) {
+  videoSelectionToken += 1;
+  const selectionToken = videoSelectionToken;
   document.querySelector(".thumbnail.active")?.classList.remove("active");
   thumbnail.classList.add("active");
   document.querySelector("#sceneTitle").textContent = photo.title;
@@ -132,29 +143,135 @@ function selectPhoto(photo, thumbnail) {
   currentPhoto = photo;
   const isVideo = photo.mediaType === "video";
   panorama.classList.toggle("is-video", isVideo);
-  flickrVideoPlayer.hidden = !isVideo;
   if (isVideo) {
+    const cachedVideo = videoScenes.get(photo.id);
+    if (currentVideo && currentVideo !== cachedVideo) currentVideo.pause();
     if (viewer) viewer.stopAutoRotate();
-    viewerStatus.hidden = true;
-    flickrVideoPlayer.src = photo.embedUrl;
+    videoControls.hidden = false;
+    viewerStatus.textContent = "Loading 360° video…";
+    viewerStatus.hidden = false;
+    loadVideoScene(photo, selectionToken);
     return;
   }
-  flickrVideoPlayer.removeAttribute("src");
+  if (currentVideo) currentVideo.pause();
+  currentVideo = null;
+  videoControls.hidden = true;
   if (viewer && viewer.getScene() !== photo.sceneId) {
     viewerStatus.textContent = "Loading panorama…";
     viewerStatus.hidden = false;
-    viewer.loadScene(photo.sceneId, 0, 0, 100);
+    requestScene(photo.sceneId);
   } else if (viewer && autoRotate) {
     viewer.startAutoRotate(2, 0);
   }
 }
 
+async function loadVideoScene(photo, selectionToken) {
+  try {
+    let video = videoScenes.get(photo.id);
+    if (!video) {
+      const response = await fetch(`/api/video-source?id=${encodeURIComponent(photo.id)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Flickr could not provide this video.");
+      if (selectionToken !== videoSelectionToken) return;
+
+      video = document.createElement("video");
+      video.crossOrigin = "anonymous";
+      video.preload = "auto";
+      video.playsInline = true;
+      video.src = data.videoUrl;
+      video.load();
+      await waitForVideoMetadata(video);
+      videoScenes.set(photo.id, video);
+    }
+    if (selectionToken !== videoSelectionToken) {
+      video.pause();
+      return;
+    }
+
+    currentVideo = video;
+    photo.sceneId = `video-${photo.id}`;
+    const scene = {
+      type: "equirectangular",
+      panorama: video,
+      dynamic: true,
+      dynamicUpdate: true,
+      title: photo.title,
+      author: photo.ownerName,
+      hfov: 100,
+      pitch: 0,
+      yaw: 0
+    };
+    if (!viewer) {
+      initializeViewerWithScene(photo.sceneId, scene);
+    } else {
+      viewer.addScene(photo.sceneId, scene);
+      if (viewer.getScene() !== photo.sceneId) {
+        requestScene(photo.sceneId);
+      } else if (viewerReady) {
+        viewerStatus.hidden = true;
+      }
+    }
+    updateVideoControls(video);
+    if (!videoControlListeners.has(video)) {
+      video.addEventListener("timeupdate", () => updateVideoControls(video));
+      video.addEventListener("play", () => updateVideoControls(video));
+      video.addEventListener("pause", () => updateVideoControls(video));
+      video.addEventListener("ended", () => updateVideoControls(video));
+      video.addEventListener("error", () => {
+        if (currentVideo === video) {
+          viewerStatus.textContent = "Flickr’s video stream stopped unexpectedly.";
+          viewerStatus.hidden = false;
+        }
+      });
+      videoControlListeners.add(video);
+    }
+    video.play().catch(() => {
+      if (currentVideo === video) updateVideoControls(video);
+    });
+  } catch (error) {
+    if (selectionToken !== videoSelectionToken) return;
+    viewerStatus.textContent = `Could not load this Flickr video: ${error.message}`;
+    viewerStatus.hidden = false;
+  }
+}
+
+function waitForVideoMetadata(video) {
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    video.addEventListener("loadedmetadata", resolve, { once: true });
+    video.addEventListener("error", () => {
+      reject(new Error("Flickr’s video stream could not be played in this browser."));
+    }, { once: true });
+  });
+}
+
+function initializeViewerWithScene(sceneId, scene) {
+  if (!window.pannellum) {
+    throw new Error("The 360° viewer could not be loaded. Check your connection and reload.");
+  }
+  viewer = window.pannellum.viewer("panoramaViewer", {
+    default: { firstScene: sceneId },
+    scenes: { [sceneId]: scene },
+    autoLoad: true,
+    showControls: false,
+    showFullscreenCtrl: false,
+    showZoomCtrl: false,
+    mouseZoom: true,
+    keyboardZoom: true,
+    draggable: true,
+    friction: 0.15,
+    hfov: 100,
+    minHfov: 35,
+    maxHfov: 120,
+    escapeHTML: true
+  });
+  viewerReady = false;
+  addViewerListeners();
+}
+
 function initializeViewer(photos) {
   const panoramaPhotos = photos.filter((photo) => photo.mediaType !== "video");
-  if (panoramaPhotos.length === 0) {
-    viewerStatus.hidden = true;
-    return;
-  }
+  if (panoramaPhotos.length === 0) return;
   if (viewer) return;
   if (!window.pannellum) {
     viewerStatus.textContent = "The 360° viewer could not be loaded. Check your connection and reload.";
@@ -193,15 +310,74 @@ function initializeViewer(photos) {
     crossOrigin: "anonymous",
     escapeHTML: true
   });
-  viewer.on("load", () => {
+  viewerReady = false;
+  addViewerListeners();
+}
+
+function addViewerListeners() {
+  const handleViewerLoad = () => {
+    viewerReady = true;
     viewerStatus.hidden = true;
     if (autoRotate && currentPhoto?.mediaType !== "video") viewer.startAutoRotate(2, 0);
-  });
+    if (pendingScene) {
+      const sceneId = pendingScene;
+      pendingScene = null;
+      requestScene(sceneId);
+    }
+  };
+  viewer.on("load", handleViewerLoad);
   viewer.on("error", (error) => {
+    viewerReady = true;
     viewerStatus.textContent = `Could not load this panorama: ${error}`;
     viewerStatus.hidden = false;
   });
+  if (viewer.isLoaded()) handleViewerLoad();
 }
+
+function requestScene(sceneId) {
+  if (!viewer || viewer.getScene() === sceneId) return;
+  if (!viewerReady) {
+    pendingScene = sceneId;
+    return;
+  }
+  viewerReady = false;
+  viewer.loadScene(sceneId, 0, 0, 100);
+}
+
+function formatVideoTime(seconds) {
+  if (!Number.isFinite(seconds)) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
+
+function updateVideoControls(video) {
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    videoSeek.value = "0";
+    videoTime.textContent = `${formatVideoTime(video.currentTime)} / 0:00`;
+  } else {
+    videoSeek.value = String(Math.round(video.currentTime / video.duration * 1000));
+    videoTime.textContent = `${formatVideoTime(video.currentTime)} / ${formatVideoTime(video.duration)}`;
+  }
+  const isPlaying = !video.paused && !video.ended;
+  videoPlayPause.textContent = isPlaying ? "Ⅱ" : "▶";
+  videoPlayPause.setAttribute("aria-label", isPlaying ? "Pause video" : "Play video");
+}
+
+videoPlayPause.addEventListener("click", () => {
+  if (!currentVideo) return;
+  if (currentVideo.paused) {
+    currentVideo.play().catch((error) => showNotice(`Could not play this video: ${error.message}`));
+  } else {
+    currentVideo.pause();
+  }
+});
+
+videoSeek.addEventListener("input", () => {
+  if (currentVideo && Number.isFinite(currentVideo.duration)) {
+    currentVideo.currentTime = Number(videoSeek.value) / 1000 * currentVideo.duration;
+  }
+});
 
 function renderPhotos(data) {
   thumbnailRow.querySelectorAll(".thumbnail").forEach((thumbnail) => thumbnail.remove());
@@ -226,12 +402,6 @@ function renderPhotos(data) {
     const attribution = document.createElement("small");
     attribution.textContent = `Flickr · ${photo.ownerName}`;
     thumbnail.append(image, title, attribution);
-    if (photo.mediaType === "video") {
-      const badge = document.createElement("span");
-      badge.className = "media-badge";
-      badge.textContent = "▶ 360° video";
-      thumbnail.append(badge);
-    }
     if (photo.mediaType === "video") {
       const badge = document.createElement("span");
       badge.className = "media-badge";
