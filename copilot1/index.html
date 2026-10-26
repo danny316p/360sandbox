@@ -24,8 +24,8 @@
             <button class="clear-search" aria-label="Clear search">×</button>
           </div>
           <div class="top-actions">
-            <button class="icon-button" aria-label="Share location">↗</button>
-            <button class="avatar" aria-label="Account">A</button>
+            <button class="icon-button" id="shareButton" aria-label="Share selected Flickr photo">↗</button>
+            <a class="avatar" id="accountLink" aria-label="Open Flickr profile" target="_blank" rel="noopener noreferrer" hidden>A</a>
           </div>
         </header>
 
@@ -43,7 +43,7 @@
           <button class="control-button fullscreen" id="fullscreenButton" aria-label="Enter fullscreen">⛶</button>
         </div>
 
-        <div class="map-card" id="mapCard">
+        <div class="map-card" id="mapCard" aria-label="Map preview">
           <div class="map-grid" aria-hidden="true"></div>
           <div class="map-road road-one"></div>
           <div class="map-road road-two"></div>
@@ -54,7 +54,7 @@
           <button class="map-expand" id="mapExpand" aria-label="Expand map">⤢</button>
         </div>
 
-        <button class="map-toggle" id="mapToggle"><span class="map-toggle-icon">⌗</span> Map</button>
+        <button class="map-toggle" id="mapToggle" aria-expanded="false" aria-controls="mapCard"><span class="map-toggle-icon">⌗</span> Map</button>
 
         <div class="bottom-panel">
           <button class="collapse-button" id="collapsePanel" aria-label="Collapse photo panel">⌄</button>
@@ -67,18 +67,23 @@
           </div>
           <div class="thumbnail-row" id="thumbnailRow">
             <p class="photo-status" id="photoStatus">Connecting to Flickr…</p>
-            <button class="add-photo" aria-label="Add a panorama"><span>＋</span><small>Add your photo</small></button>
+            <a class="add-photo" href="https://www.flickr.com/photos/upload/" target="_blank" rel="noopener noreferrer" aria-label="Upload a panorama to Flickr"><span>＋</span><small>Add your photo</small></a>
           </div>
         </div>
 
+        <button class="menu-backdrop" id="menuBackdrop" aria-label="Close menu" hidden></button>
         <div class="side-menu" id="sideMenu" aria-hidden="true">
           <button class="menu-close" id="menuClose" aria-label="Close menu">×</button>
           <span class="eyebrow">Street View</span>
           <h2>Explore everywhere.</h2>
           <p>Drag to look around each 360° photo. Scroll or use the zoom controls to take a closer look.</p>
-          <a href="#photos">Your contributions <span>›</span></a>
-          <a href="#settings">Settings <span>›</span></a>
+          <button class="menu-setting" id="autoRotateButton" type="button" aria-pressed="false">
+            <span><strong>Auto-rotate panorama</strong><small>Slowly turn the current view</small></span>
+            <span class="setting-state" id="autoRotateState">Off</span>
+          </button>
+          <a href="#" id="profileMenuLink" target="_blank" rel="noopener noreferrer" hidden>Your Flickr photos <span>↗</span></a>
         </div>
+        <div id="appNotice" class="app-notice" role="status" aria-live="polite" hidden></div>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
