@@ -49,13 +49,10 @@
         </div>
 
         <div class="map-card" id="mapCard" aria-label="Map preview">
-          <div class="map-grid" aria-hidden="true"></div>
-          <div class="map-road road-one"></div>
-          <div class="map-road road-two"></div>
-          <div class="map-road road-three"></div>
-          <div class="map-water"></div>
-          <div class="map-pin" aria-label="Current location"><span></span></div>
-          <div class="map-direction">N</div>
+          <img class="map-image" id="mapImage" alt="" hidden />
+          <div class="map-marker-layer" id="mapMarkers"></div>
+          <div class="map-empty" id="mapEmpty">Map not configured</div>
+          <a class="map-photo-link" id="mapPhotoLink" target="_blank" rel="noopener noreferrer" hidden>Map photo on Flickr ↗</a>
           <button class="map-expand" id="mapExpand" aria-label="Expand map">⤢</button>
         </div>
 
@@ -86,6 +83,7 @@
             <span class="setting-state" id="autoRotateState">Off</span>
           </button>
           <a href="#" id="profileMenuLink" target="_blank" rel="noopener noreferrer" hidden>Your Flickr photos <span>↗</span></a>
+          <a href="/admin.html" id="adminMenuLink">Map administration <span>↗</span></a>
         </div>
         <div id="appNotice" class="app-notice" role="status" aria-live="polite" hidden></div>
       </section>

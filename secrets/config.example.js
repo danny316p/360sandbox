@@ -3,5 +3,7 @@ module.exports = {
     API_KEY: "YOUR_API_KEY",
     USER_ID: "YOUR_FLICKR_USER_ID",
     // Optional: load photos from this Flickr album instead of all user photos.
-    PHOTOSET_ID: ""
+    PHOTOSET_ID: "",
+    // Choose a strong, unique password to enable the map admin tool.
+    ADMIN_PASSWORD: "CHANGE_THIS_TO_A_STRONG_PASSWORD"
 };
