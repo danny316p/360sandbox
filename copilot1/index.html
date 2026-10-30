@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#202124" />
+    <title>Street View — Preview</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="street-view-app">
+      <section class="panorama" aria-label="360 degree panorama viewer">
+        <div id="panoramaViewer" class="panorama-viewer" aria-label="Interactive 360 degree photo"></div>
+        <div id="viewerStatus" class="viewer-status" role="status">Loading 360° viewer…</div>
+        <div class="video-controls" id="videoControls" aria-label="360 degree video controls" hidden>
+          <button class="video-play-button" id="videoPlayPause" type="button" aria-label="Play video">▶</button>
+          <input id="videoSeek" type="range" min="0" max="1000" value="0" aria-label="Seek through video" />
+          <span class="video-time" id="videoTime">0:00 / 0:00</span>
+        </div>
+
+        <header class="top-bar">
+          <button class="icon-button menu-button" aria-label="Open menu" id="menuButton">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="location-search">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input type="search" placeholder="Filter this user's photos" aria-label="Filter this user's photos" />
+            <button class="clear-search" aria-label="Clear search">×</button>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" id="shareButton" aria-label="Share selected Flickr photo">↗</button>
+            <a class="avatar" id="accountLink" aria-label="Open Flickr profile" target="_blank" rel="noopener noreferrer" hidden>F</a>
+          </div>
+        </header>
+
+        <div class="scene-label">
+          <div class="scene-kicker"><span class="live-dot"></span> Street View preview</div>
+          <h1 id="sceneTitle">Golden Gate Bridge</h1>
+          <p>San Francisco, California</p>
+          <a class="flickr-link" id="flickrLink" href="#" target="_blank" rel="noopener noreferrer">Open photo on Flickr ↗</a>
+        </div>
+
+        <div class="viewer-controls">
+          <button class="control-button" id="zoomIn" aria-label="Zoom in">+</button>
+          <button class="control-button" id="zoomOut" aria-label="Zoom out">−</button>
+          <button class="control-button compass" id="resetView" aria-label="Reset panorama view">↻</button>
+          <button class="control-button fullscreen" id="fullscreenButton" aria-label="Enter fullscreen">⛶</button>
+        </div>
+
+        <div class="map-card" id="mapCard" aria-label="Map preview">
+          <img class="map-image" id="mapImage" alt="" hidden />
+          <div class="map-marker-layer" id="mapMarkers"></div>
+          <div class="map-empty" id="mapEmpty">Map not configured</div>
+          <a class="map-photo-link" id="mapPhotoLink" target="_blank" rel="noopener noreferrer" hidden>Map photo on Flickr ↗</a>
+          <button class="map-expand" id="mapExpand" aria-label="Expand map">⤢</button>
+        </div>
+
+        <button class="map-toggle" id="mapToggle" type="button" aria-pressed="true" aria-controls="mapCard"><span class="map-toggle-icon">⌗</span><span id="mapToggleLabel">Hide map</span></button>
+
+        <div class="bottom-panel">
+          <button class="collapse-button" id="collapsePanel" aria-label="Collapse photo panel">⌄</button>
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">Explore this place</span>
+              <h2>360° photos &amp; videos</h2>
+            </div>
+            <span class="photo-count" id="photoCount">Loading photos…</span>
+          </div>
+          <div class="thumbnail-row" id="thumbnailRow">
+            <p class="photo-status" id="photoStatus">Connecting to Flickr…</p>
+          </div>
+        </div>
+
+        <button class="menu-backdrop" id="menuBackdrop" aria-label="Close menu" hidden></button>
+        <div class="side-menu" id="sideMenu" aria-hidden="true">
+          <button class="menu-close" id="menuClose" aria-label="Close menu">×</button>
+          <span class="eyebrow">Street View</span>
+          <h2>Explore everywhere.</h2>
+          <p>Drag to look around each 360° photo. Scroll or use the zoom controls to take a closer look.</p>
+          <button class="menu-setting" id="autoRotateButton" type="button" aria-pressed="false">
+            <span><strong>Auto-rotate panorama</strong><small>Slowly turn the current view</small></span>
+            <span class="setting-state" id="autoRotateState">Off</span>
+          </button>
+          <a href="#" id="profileMenuLink" target="_blank" rel="noopener noreferrer" hidden>Your Flickr photos <span>↗</span></a>
+          <a href="/admin.html" id="adminMenuLink">Map administration <span>↗</span></a>
+        </div>
+        <div id="appNotice" class="app-notice" role="status" aria-live="polite" hidden></div>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
