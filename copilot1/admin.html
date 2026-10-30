@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#202124" />
+    <title>Map Admin — Street View</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body class="admin-page">
+    <header class="admin-header">
+      <a class="admin-brand" href="/">360 Street View</a>
+      <a class="admin-view-link" href="/">Open public viewer ↗</a>
+    </header>
+    <main class="admin-main">
+      <section class="admin-login-card" id="loginPanel">
+        <p class="eyebrow">Admin tool</p>
+        <h1>Build your photo map</h1>
+        <p>Sign in to choose a Flickr photo for the map and position 360° photos and videos.</p>
+        <form id="loginForm">
+          <label for="adminPassword">Admin password</label>
+          <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Sign in</button>
+        </form>
+        <p class="admin-message" id="loginMessage" role="status" hidden></p>
+      </section>
+
+      <section id="editorPanel" hidden>
+        <div class="admin-title-row">
+          <div>
+            <p class="eyebrow">Admin tool</p>
+            <h1>Build your photo map</h1>
+            <p>Use a Flickr photo as the image map, then place your 360° stops where they belong.</p>
+          </div>
+          <button class="admin-secondary-button" id="logoutButton" type="button">Sign out</button>
+        </div>
+
+        <section class="admin-card map-setup">
+          <h2>1. Choose a map photo</h2>
+          <form id="mapPhotoForm">
+            <label for="mapPhotoUrl">Flickr photo URL or photo ID</label>
+            <div class="admin-inline-form">
+              <input id="mapPhotoUrl" type="text" placeholder="https://www.flickr.com/photos/you/123456789" required />
+              <button type="submit">Load map photo</button>
+            </div>
+          </form>
+          <p class="admin-message" id="mapMessage" role="status" hidden></p>
+          <p class="map-attribution" id="mapAttribution" hidden></p>
+        </section>
+
+        <section class="admin-layout">
+          <div class="admin-card map-editor-card">
+            <h2>2. Click the map to place the selected stop</h2>
+            <p id="placementHint">Choose a photo or video from the stops list, then click its location on the map.</p>
+            <div class="admin-map-stage" id="mapStage" aria-label="Map placement area">
+              <img id="adminMapImage" alt="" hidden />
+              <span class="admin-map-placeholder" id="mapPlaceholder">Load a Flickr photo to use as your map.</span>
+              <div class="admin-map-markers" id="adminMapMarkers"></div>
+            </div>
+            <div class="admin-actions">
+              <button id="saveMapButton" type="button">Save map</button>
+              <button class="admin-secondary-button" id="exportMapButton" type="button">Download map.json</button>
+              <span id="saveMessage" class="admin-message" role="status"></span>
+            </div>
+          </div>
+
+          <aside class="admin-card stop-library">
+            <div class="library-heading">
+              <div>
+                <h2>3. Stops</h2>
+                <p>Select a stop, then place or drag it on the map.</p>
+              </div>
+              <span id="stopCount">Loading…</span>
+            </div>
+            <label class="sr-only" for="stopFilter">Filter stops</label>
+            <input id="stopFilter" type="search" placeholder="Filter photos and videos" />
+            <div class="admin-stop-list" id="stopList"></div>
+            <h3>Placed stops</h3>
+            <div class="placed-stop-list" id="placedStopList"></div>
+          </aside>
+        </section>
+      </section>
+    </main>
+    <script src="admin.js"></script>
+  </body>
+</html>

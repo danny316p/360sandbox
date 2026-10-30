@@ -12,6 +12,8 @@ const videoSeek = document.querySelector("#videoSeek");
 const videoTime = document.querySelector("#videoTime");
 const searchInput = document.querySelector(".location-search input");
 let userPhotos = [];
+let photoThumbnails = new Map();
+let mapManifest = { version: 1, map: null, markers: [] };
 let viewer = null;
 let viewerReady = false;
 let pendingScene = null;
@@ -48,6 +50,75 @@ function setMapExpanded(expanded) {
   mapCard.classList.toggle("expanded", expanded);
   document.querySelector("#mapToggle").setAttribute("aria-expanded", String(expanded));
   document.querySelector("#mapExpand").setAttribute("aria-label", expanded ? "Shrink map preview" : "Expand map preview");
+}
+
+function renderMap() {
+  const image = document.querySelector("#mapImage");
+  const empty = document.querySelector("#mapEmpty");
+  const markerLayer = document.querySelector("#mapMarkers");
+  const mapPhotoLink = document.querySelector("#mapPhotoLink");
+  markerLayer.replaceChildren();
+  if (!mapManifest.map) {
+    image.hidden = true;
+    empty.hidden = false;
+    empty.textContent = "Map not configured";
+    mapPhotoLink.hidden = true;
+    return;
+  }
+  if (image.src !== mapManifest.map.imageUrl) image.src = mapManifest.map.imageUrl;
+  image.alt = `${mapManifest.map.title} by ${mapManifest.map.ownerName}`;
+  image.hidden = false;
+  empty.hidden = true;
+  mapPhotoLink.href = mapManifest.map.photoUrl;
+  mapPhotoLink.textContent = `Map photo on Flickr ↗`;
+  mapPhotoLink.hidden = false;
+  mapManifest.markers.forEach((marker, index) => {
+    const photo = userPhotos.find((item) => item.id === marker.photoId);
+    const details = photo || marker.photo;
+    if (!details) return;
+    const pin = document.createElement(photo ? "button" : "a");
+    pin.className = "map-marker";
+    if (photo) {
+      pin.type = "button";
+      pin.addEventListener("click", () => {
+        if (!photoThumbnails.has(photo.id)) {
+          searchInput.value = "";
+          filterPhotos();
+        }
+        photoThumbnails.get(photo.id)?.click();
+      });
+    } else {
+      pin.href = details.pageUrl;
+      pin.target = "_blank";
+      pin.rel = "noopener noreferrer";
+    }
+    pin.style.left = `${marker.x * 100}%`;
+    pin.style.top = `${marker.y * 100}%`;
+    pin.setAttribute("aria-label", `Open ${details.title} on Flickr`);
+    pin.title = details.title;
+    const number = document.createElement("span");
+    number.textContent = String(index + 1);
+    pin.append(number);
+    markerLayer.append(pin);
+  });
+}
+
+async function loadMap() {
+  try {
+    let response = await fetch("/map.json");
+    if (!response.ok) response = await fetch("/api/map");
+    if (!response.ok) throw new Error("The saved map could not be loaded.");
+    const data = await response.json();
+    if (data.version !== 1 || !Array.isArray(data.markers)) {
+      throw new Error("The saved map has an unsupported format.");
+    }
+    mapManifest = data;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showNotice("The saved map file is not valid JSON.");
+    }
+  }
+  renderMap();
 }
 
 function setMenuOpen(open) {
@@ -381,6 +452,7 @@ videoSeek.addEventListener("input", () => {
 
 function renderPhotos(data) {
   thumbnailRow.querySelectorAll(".thumbnail").forEach((thumbnail) => thumbnail.remove());
+  photoThumbnails = new Map();
   photoCount.textContent = `${data.length} item${data.length === 1 ? "" : "s"}`;
   photoStatus.hidden = data.length > 0;
   if (data.length === 0) {
@@ -410,10 +482,12 @@ function renderPhotos(data) {
     }
     thumbnail.addEventListener("click", () => selectPhoto(photo, thumbnail));
     thumbnailRow.append(thumbnail);
+    photoThumbnails.set(photo.id, thumbnail);
     if (index === 0) {
       selectPhoto(photo, thumbnail);
     }
   });
+  renderMap();
 }
 
 async function loadPhotos() {
@@ -482,4 +556,5 @@ document.querySelector(".clear-search").addEventListener("click", () => {
   searchInput.focus();
 });
 document.querySelector("#flickrLink").hidden = true;
+loadMap();
 loadPhotos();
