@@ -249,6 +249,7 @@ async function loadVideoScene(photo, selectionToken) {
       video.crossOrigin = "anonymous";
       video.preload = "auto";
       video.playsInline = true;
+      video.loop = true;
       video.src = data.videoUrl;
       video.load();
       await waitForVideoMetadata(video);
