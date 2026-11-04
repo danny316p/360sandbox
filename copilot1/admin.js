@@ -7,6 +7,10 @@ const mapStage = document.querySelector("#mapStage");
 const mapImage = document.querySelector("#adminMapImage");
 const mapPlaceholder = document.querySelector("#mapPlaceholder");
 const markerLayer = document.querySelector("#adminMapMarkers");
+const zoomOutButton = document.querySelector("#zoomOutButton");
+const zoomInButton = document.querySelector("#zoomInButton");
+const resetZoomButton = document.querySelector("#resetZoomButton");
+const zoomLevel = document.querySelector("#zoomLevel");
 const stopList = document.querySelector("#stopList");
 const placedStopList = document.querySelector("#placedStopList");
 const stopFilter = document.querySelector("#stopFilter");
@@ -15,6 +19,10 @@ let manifest = { version: 1, map: null, markers: [] };
 let photos = [];
 let selectedPhotoId = null;
 let draggedPhotoId = null;
+const MIN_MAP_ZOOM = 1;
+const MAX_MAP_ZOOM = 4;
+const MAP_ZOOM_STEP = 0.25;
+let mapZoom = MIN_MAP_ZOOM;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -118,6 +126,7 @@ document.querySelector("#mapPhotoForm").addEventListener("submit", async (event)
     }
     manifest.map = data;
     manifest.markers = [];
+    setMapZoom(MIN_MAP_ZOOM);
     renderMapEditor();
     renderPlacedStops();
     showMessage(mapMessage, `Using “${data.title}” by ${data.ownerName}. Save the map to publish it.`);
@@ -128,6 +137,7 @@ document.querySelector("#mapPhotoForm").addEventListener("submit", async (event)
 
 function renderMapEditor() {
   markerLayer.replaceChildren();
+  updateMapZoomControls();
   if (!manifest.map) {
     mapImage.hidden = true;
     mapPlaceholder.hidden = false;
@@ -172,6 +182,24 @@ function renderMapEditor() {
   });
 }
 
+zoomOutButton.addEventListener("click", () => setMapZoom(mapZoom - MAP_ZOOM_STEP));
+zoomInButton.addEventListener("click", () => setMapZoom(mapZoom + MAP_ZOOM_STEP));
+resetZoomButton.addEventListener("click", () => setMapZoom(MIN_MAP_ZOOM));
+
+function setMapZoom(zoom) {
+  mapZoom = Number(Math.max(MIN_MAP_ZOOM, Math.min(MAX_MAP_ZOOM, zoom)).toFixed(2));
+  mapStage.style.setProperty("--map-zoom", mapZoom);
+  updateMapZoomControls();
+}
+
+function updateMapZoomControls() {
+  const hasMap = Boolean(manifest.map);
+  zoomOutButton.disabled = !hasMap || mapZoom === MIN_MAP_ZOOM;
+  zoomInButton.disabled = !hasMap || mapZoom === MAX_MAP_ZOOM;
+  resetZoomButton.disabled = !hasMap || mapZoom === MIN_MAP_ZOOM;
+  zoomLevel.value = `${Math.round(mapZoom * 100)}%`;
+}
+
 mapStage.addEventListener("click", (event) => {
   if (event.target.closest(".admin-pin")) return;
   if (!manifest.map) {
@@ -213,8 +241,8 @@ mapStage.addEventListener("pointercancel", () => { draggedPhotoId = null; });
 function getMapPosition(event) {
   const bounds = mapStage.getBoundingClientRect();
   return {
-    x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+    x: Math.max(0, Math.min(1, ((event.clientX - bounds.left) / bounds.width - 0.5) / mapZoom + 0.5)),
+    y: Math.max(0, Math.min(1, ((event.clientY - bounds.top) / bounds.height - 0.5) / mapZoom + 0.5))
   };
 }
 
