@@ -52,7 +52,14 @@
         <section class="admin-layout">
           <div class="admin-card map-editor-card">
             <h2>2. Click the map to place the selected stop</h2>
-            <p id="placementHint">Choose a photo or video from the stops list, then click its location on the map.</p>
+            <p id="placementHint">Choose a photo or video to place. At 100%, click the map; zoom in and drag empty map space to pan.</p>
+            <div class="admin-map-controls" role="group" aria-label="Map zoom controls">
+              <span>Map zoom</span>
+              <button class="admin-secondary-button" id="zoomOutButton" type="button" aria-label="Zoom out">−</button>
+              <output id="zoomLevel" aria-live="polite">100%</output>
+              <button class="admin-secondary-button" id="zoomInButton" type="button" aria-label="Zoom in">+</button>
+              <button class="admin-secondary-button" id="resetZoomButton" type="button">Reset</button>
+            </div>
             <div class="admin-map-stage" id="mapStage" aria-label="Map placement area">
               <img id="adminMapImage" alt="" hidden />
               <span class="admin-map-placeholder" id="mapPlaceholder">Load a Flickr photo to use as your map.</span>

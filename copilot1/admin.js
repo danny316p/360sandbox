@@ -7,6 +7,10 @@ const mapStage = document.querySelector("#mapStage");
 const mapImage = document.querySelector("#adminMapImage");
 const mapPlaceholder = document.querySelector("#mapPlaceholder");
 const markerLayer = document.querySelector("#adminMapMarkers");
+const zoomOutButton = document.querySelector("#zoomOutButton");
+const zoomInButton = document.querySelector("#zoomInButton");
+const resetZoomButton = document.querySelector("#resetZoomButton");
+const zoomLevel = document.querySelector("#zoomLevel");
 const stopList = document.querySelector("#stopList");
 const placedStopList = document.querySelector("#placedStopList");
 const stopFilter = document.querySelector("#stopFilter");
@@ -15,6 +19,15 @@ let manifest = { version: 1, map: null, markers: [] };
 let photos = [];
 let selectedPhotoId = null;
 let draggedPhotoId = null;
+let panStart = null;
+let isPanning = false;
+let suppressMapClick = false;
+const MIN_MAP_ZOOM = 1;
+const MAX_MAP_ZOOM = 4;
+const MAP_ZOOM_STEP = 0.25;
+let mapZoom = MIN_MAP_ZOOM;
+let mapPanX = 0;
+let mapPanY = 0;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -118,6 +131,8 @@ document.querySelector("#mapPhotoForm").addEventListener("submit", async (event)
     }
     manifest.map = data;
     manifest.markers = [];
+    setMapZoom(MIN_MAP_ZOOM);
+    setMapPan(0, 0);
     renderMapEditor();
     renderPlacedStops();
     showMessage(mapMessage, `Using “${data.title}” by ${data.ownerName}. Save the map to publish it.`);
@@ -128,6 +143,7 @@ document.querySelector("#mapPhotoForm").addEventListener("submit", async (event)
 
 function renderMapEditor() {
   markerLayer.replaceChildren();
+  updateMapZoomControls();
   if (!manifest.map) {
     mapImage.hidden = true;
     mapPlaceholder.hidden = false;
@@ -161,6 +177,7 @@ function renderMapEditor() {
     pin.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      panStart = null;
       selectedPhotoId = marker.photoId;
       draggedPhotoId = marker.photoId;
       mapStage.setPointerCapture(event.pointerId);
@@ -172,7 +189,42 @@ function renderMapEditor() {
   });
 }
 
+zoomOutButton.addEventListener("click", () => setMapZoom(mapZoom - MAP_ZOOM_STEP));
+zoomInButton.addEventListener("click", () => setMapZoom(mapZoom + MAP_ZOOM_STEP));
+resetZoomButton.addEventListener("click", () => setMapZoom(MIN_MAP_ZOOM));
+
+function setMapZoom(zoom) {
+  mapZoom = Number(Math.max(MIN_MAP_ZOOM, Math.min(MAX_MAP_ZOOM, zoom)).toFixed(2));
+  if (mapZoom === MIN_MAP_ZOOM) setMapPan(0, 0);
+  else setMapPan(mapPanX, mapPanY);
+  mapStage.style.setProperty("--map-zoom", mapZoom);
+  mapStage.classList.toggle("is-zoomed", mapZoom > MIN_MAP_ZOOM);
+  updateMapZoomControls();
+}
+
+function setMapPan(x, y) {
+  const bounds = mapStage.getBoundingClientRect();
+  const maxPanX = bounds.width * (mapZoom - 1) / 2;
+  const maxPanY = bounds.height * (mapZoom - 1) / 2;
+  mapPanX = Math.max(-maxPanX, Math.min(maxPanX, x));
+  mapPanY = Math.max(-maxPanY, Math.min(maxPanY, y));
+  mapStage.style.setProperty("--map-pan-x", `${mapPanX}px`);
+  mapStage.style.setProperty("--map-pan-y", `${mapPanY}px`);
+}
+
+function updateMapZoomControls() {
+  const hasMap = Boolean(manifest.map);
+  zoomOutButton.disabled = !hasMap || mapZoom === MIN_MAP_ZOOM;
+  zoomInButton.disabled = !hasMap || mapZoom === MAX_MAP_ZOOM;
+  resetZoomButton.disabled = !hasMap || mapZoom === MIN_MAP_ZOOM;
+  zoomLevel.value = `${Math.round(mapZoom * 100)}%`;
+}
+
 mapStage.addEventListener("click", (event) => {
+  if (suppressMapClick) {
+    suppressMapClick = false;
+    return;
+  }
   if (event.target.closest(".admin-pin")) return;
   if (!manifest.map) {
     showMessage(mapMessage, "Choose a Flickr photo to use as the map first.", true);
@@ -200,21 +252,57 @@ mapStage.addEventListener("click", (event) => {
   renderPhotoLibrary();
 });
 
+mapStage.addEventListener("pointerdown", (event) => {
+  suppressMapClick = false;
+  if (!manifest.map || mapZoom === MIN_MAP_ZOOM || event.target.closest(".admin-pin")) return;
+  panStart = {
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    panX: mapPanX,
+    panY: mapPanY
+  };
+  isPanning = false;
+  mapStage.classList.remove("is-panning");
+  mapStage.setPointerCapture(event.pointerId);
+});
+
 mapStage.addEventListener("pointermove", (event) => {
+  if (panStart && event.pointerId === panStart.pointerId) {
+    const deltaX = event.clientX - panStart.clientX;
+    const deltaY = event.clientY - panStart.clientY;
+    if (!isPanning && Math.hypot(deltaX, deltaY) > 3) isPanning = true;
+    if (isPanning) {
+      mapStage.classList.add("is-panning");
+      setMapPan(panStart.panX + deltaX, panStart.panY + deltaY);
+      suppressMapClick = true;
+    }
+    return;
+  }
   if (!draggedPhotoId) return;
   const marker = manifest.markers.find((item) => item.photoId === draggedPhotoId);
   if (marker) Object.assign(marker, getMapPosition(event));
   renderMapEditor();
   renderPlacedStops();
 });
-mapStage.addEventListener("pointerup", () => { draggedPhotoId = null; });
-mapStage.addEventListener("pointercancel", () => { draggedPhotoId = null; });
+function finishMapPointer(event) {
+  if (panStart && event.pointerId === panStart.pointerId) {
+    if (isPanning) suppressMapClick = true;
+    panStart = null;
+    isPanning = false;
+    mapStage.classList.remove("is-panning");
+  }
+  draggedPhotoId = null;
+}
+
+mapStage.addEventListener("pointerup", finishMapPointer);
+mapStage.addEventListener("pointercancel", finishMapPointer);
 
 function getMapPosition(event) {
   const bounds = mapStage.getBoundingClientRect();
   return {
-    x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height))
+    x: Math.max(0, Math.min(1, ((event.clientX - bounds.left - mapPanX) / bounds.width - 0.5) / mapZoom + 0.5)),
+    y: Math.max(0, Math.min(1, ((event.clientY - bounds.top - mapPanY) / bounds.height - 0.5) / mapZoom + 0.5))
   };
 }
 
