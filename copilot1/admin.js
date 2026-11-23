@@ -25,6 +25,7 @@ let suppressMapClick = false;
 const MIN_MAP_ZOOM = 1;
 const MAX_MAP_ZOOM = 4;
 const MAP_ZOOM_STEP = 0.25;
+const MAP_PAN_SPEED = 2;
 let mapZoom = MIN_MAP_ZOOM;
 let mapPanX = 0;
 let mapPanY = 0;
@@ -275,9 +276,12 @@ function panMapWithPointer(event) {
   const totalY = event.clientY - panStart.clientY;
   if (!isPanning && Math.hypot(totalX, totalY) > 3) {
     isPanning = true;
-    setMapPan(panStart.panX + totalX, panStart.panY + totalY);
+    setMapPan(panStart.panX + totalX * MAP_PAN_SPEED, panStart.panY + totalY * MAP_PAN_SPEED);
   } else if (isPanning) {
-    setMapPan(mapPanX + event.clientX - panStart.lastClientX, mapPanY + event.clientY - panStart.lastClientY);
+    setMapPan(
+      mapPanX + (event.clientX - panStart.lastClientX) * MAP_PAN_SPEED,
+      mapPanY + (event.clientY - panStart.lastClientY) * MAP_PAN_SPEED
+    );
   }
   if (isPanning) {
     mapStage.classList.add("is-panning");
