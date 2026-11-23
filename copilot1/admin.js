@@ -259,6 +259,8 @@ mapStage.addEventListener("pointerdown", (event) => {
     pointerId: event.pointerId,
     clientX: event.clientX,
     clientY: event.clientY,
+    lastClientX: event.clientX,
+    lastClientY: event.clientY,
     panX: mapPanX,
     panY: mapPanY
   };
@@ -267,18 +269,27 @@ mapStage.addEventListener("pointerdown", (event) => {
   mapStage.setPointerCapture(event.pointerId);
 });
 
-mapStage.addEventListener("pointermove", (event) => {
-  if (panStart && event.pointerId === panStart.pointerId) {
-    const deltaX = event.clientX - panStart.clientX;
-    const deltaY = event.clientY - panStart.clientY;
-    if (!isPanning && Math.hypot(deltaX, deltaY) > 3) isPanning = true;
-    if (isPanning) {
-      mapStage.classList.add("is-panning");
-      setMapPan(panStart.panX + deltaX, panStart.panY + deltaY);
-      suppressMapClick = true;
-    }
-    return;
+function panMapWithPointer(event) {
+  if (!panStart || event.pointerId !== panStart.pointerId) return false;
+  const totalX = event.clientX - panStart.clientX;
+  const totalY = event.clientY - panStart.clientY;
+  if (!isPanning && Math.hypot(totalX, totalY) > 3) {
+    isPanning = true;
+    setMapPan(panStart.panX + totalX, panStart.panY + totalY);
+  } else if (isPanning) {
+    setMapPan(mapPanX + event.clientX - panStart.lastClientX, mapPanY + event.clientY - panStart.lastClientY);
   }
+  if (isPanning) {
+    mapStage.classList.add("is-panning");
+    suppressMapClick = true;
+  }
+  panStart.lastClientX = event.clientX;
+  panStart.lastClientY = event.clientY;
+  return true;
+}
+
+mapStage.addEventListener("pointermove", (event) => {
+  if (panMapWithPointer(event)) return;
   if (!draggedPhotoId) return;
   const marker = manifest.markers.find((item) => item.photoId === draggedPhotoId);
   if (marker) Object.assign(marker, getMapPosition(event));
