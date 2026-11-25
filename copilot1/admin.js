@@ -5,6 +5,7 @@ const mapMessage = document.querySelector("#mapMessage");
 const saveMessage = document.querySelector("#saveMessage");
 const mapStage = document.querySelector("#mapStage");
 const mapImage = document.querySelector("#adminMapImage");
+mapImage.addEventListener("dragstart", (event) => event.preventDefault());
 const mapPlaceholder = document.querySelector("#mapPlaceholder");
 const markerLayer = document.querySelector("#adminMapMarkers");
 const zoomOutButton = document.querySelector("#zoomOutButton");
