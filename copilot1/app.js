@@ -1,9 +1,11 @@
 const panel = document.querySelector(".bottom-panel");
 const mapCard = document.querySelector("#mapCard");
+const mapImage = document.querySelector("#mapImage");
 const menu = document.querySelector("#sideMenu");
 const panorama = document.querySelector(".panorama");
 const thumbnailRow = document.querySelector("#thumbnailRow");
 const photoStatus = document.querySelector("#photoStatus");
+const stopNavigation = document.querySelector("#stopNavigation");
 const photoCount = document.querySelector("#photoCount");
 const viewerStatus = document.querySelector("#viewerStatus");
 const videoControls = document.querySelector("#videoControls");
@@ -24,6 +26,8 @@ const videoScenes = new Map();
 const videoControlListeners = new WeakSet();
 let autoRotate = false;
 let noticeTimeout;
+
+mapImage.addEventListener("load", renderStopNavigation);
 
 document.querySelector("#collapsePanel").addEventListener("click", (event) => {
   panel.classList.toggle("collapsed");
@@ -53,7 +57,7 @@ function setMapExpanded(expanded) {
 }
 
 function renderMap() {
-  const image = document.querySelector("#mapImage");
+  const image = mapImage;
   const empty = document.querySelector("#mapEmpty");
   const markerLayer = document.querySelector("#mapMarkers");
   const mapPhotoLink = document.querySelector("#mapPhotoLink");
@@ -80,13 +84,7 @@ function renderMap() {
     pin.className = "map-marker";
     if (photo) {
       pin.type = "button";
-      pin.addEventListener("click", () => {
-        if (!photoThumbnails.has(photo.id)) {
-          searchInput.value = "";
-          filterPhotos();
-        }
-        photoThumbnails.get(photo.id)?.click();
-      });
+      pin.addEventListener("click", () => selectPlacedPhoto(photo));
     } else {
       pin.href = details.pageUrl;
       pin.target = "_blank";
@@ -119,6 +117,66 @@ async function loadMap() {
     }
   }
   renderMap();
+  renderStopNavigation();
+}
+
+function getNearbyPlacedStops() {
+  if (!currentPhoto) return [];
+  const currentMarker = mapManifest.markers.find((marker) => marker.photoId === currentPhoto.id);
+  if (!currentMarker) return [];
+
+  const mapWidth = mapImage.naturalWidth || 1;
+  const mapHeight = mapImage.naturalHeight || 1;
+  return mapManifest.markers
+    .filter((marker) => marker.photoId !== currentPhoto.id)
+    .map((marker) => {
+      const photo = userPhotos.find((item) => item.id === marker.photoId);
+      if (!photo) return null;
+      const deltaX = (marker.x - currentMarker.x) * mapWidth;
+      const deltaY = (marker.y - currentMarker.y) * mapHeight;
+      return {
+        photo,
+        distance: Math.hypot(deltaX, deltaY),
+        direction: Math.atan2(deltaY, deltaX) * 180 / Math.PI + 90
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.distance - right.distance)
+    .slice(0, 4);
+}
+
+function renderStopNavigation() {
+  const nearbyStops = getNearbyPlacedStops();
+  stopNavigation.replaceChildren();
+  stopNavigation.hidden = nearbyStops.length === 0;
+  nearbyStops.forEach(({ photo, direction }) => {
+    const button = document.createElement("button");
+    button.className = "stop-navigation-button";
+    button.type = "button";
+    button.setAttribute("aria-label", `Go to ${photo.title}, a nearby map stop`);
+    button.title = photo.title;
+    const arrow = document.createElement("span");
+    arrow.className = "stop-navigation-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "↑";
+    arrow.style.transform = `rotate(${direction}deg)`;
+    const title = document.createElement("span");
+    title.className = "stop-navigation-title";
+    title.textContent = photo.title;
+    button.append(arrow, title);
+    button.addEventListener("click", () => selectPlacedPhoto(photo));
+    stopNavigation.append(button);
+  });
+}
+
+function selectPlacedPhoto(photo) {
+  let thumbnail = photoThumbnails.get(photo.id);
+  if (!thumbnail) {
+    searchInput.value = "";
+    filterPhotos();
+    thumbnail = photoThumbnails.get(photo.id);
+  }
+  thumbnail?.click();
 }
 
 function setMenuOpen(open) {
@@ -212,6 +270,7 @@ function selectPhoto(photo, thumbnail) {
   flickrLink.href = photo.pageUrl;
   flickrLink.hidden = false;
   currentPhoto = photo;
+  renderStopNavigation();
   const isVideo = photo.mediaType === "video";
   panorama.classList.toggle("is-video", isVideo);
   if (isVideo) {
